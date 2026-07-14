@@ -353,6 +353,23 @@ AC_DEFUN([TOOLCHAIN_EXTRACT_COMPILER_VERSION],
     COMPILER_VERSION_STRING=`$ECHO $COMPILER_VERSION_OUTPUT`
     COMPILER_VERSION_NUMBER=`$ECHO $COMPILER_VERSION_OUTPUT | \
         $SED -e 's/^.*ersion.\(@<:@1-9@:>@@<:@0-9.@:>@*\) .*$/\1/'`
+
+    # The sed above may fail for non-English MSVC output, leaving
+    # COMPILER_VERSION_NUMBER equal to the whole output. As a fallback,
+    # match any dotted numeric version (e.g., 14.50.35723.0), then let
+    # AWK pick the one with the most dots.
+    # grep -oE is safe here because building OpenJDK on Windows requires
+    # a Cygwin or MSYS2 environment (which supply GNU grep).
+    if test "x$COMPILER_VERSION_NUMBER" = "x$COMPILER_VERSION_OUTPUT"; then
+      _FALLBACK_VERSION=`$ECHO "$COMPILER_VERSION_OUTPUT" | \
+          $GREP -oE '@<:@0-9@:>@+(\.@<:@0-9@:>@+)+' | \
+          $AWK '{ split($[]0, a, "."); cnt = length(a) - 1; if (cnt > max) { max = cnt; best = $[]0 } } END { print best }'`
+      if test "x$_FALLBACK_VERSION" != "x"; then
+        # Strip \r again to avoid version comparison warnings.
+        # Without this, the version number may appear empty in AC_MSG_WARN.
+        COMPILER_VERSION_NUMBER=`$ECHO "$_FALLBACK_VERSION" | $TR -d '\r'`
+      fi
+    fi
   elif test  "x$TOOLCHAIN_TYPE" = xgcc; then
     # gcc --version output typically looks like
     #     gcc (Ubuntu/Linaro 4.8.1-10ubuntu9) 4.8.1
@@ -925,7 +942,21 @@ AC_DEFUN_ONCE([TOOLCHAIN_MISC_CHECKS],
   if test  "x$TOOLCHAIN_TYPE" = xmicrosoft; then
     # On Windows, double-check that we got the right compiler.
     CC_VERSION_OUTPUT=`$CC 2>&1 1>/dev/null | $HEAD -n 1 | $TR -d '\r'`
-    COMPILER_CPU_TEST=`$ECHO $CC_VERSION_OUTPUT | $SED -n "s/^.* \(.*\)$/\1/p"`
+    # Use keyword search (instead of sed on the last word) for more reliable CPU
+    # detection across different locales and compiler output formats.
+    COMPILER_CPU_TEST=
+    if $ECHO "$CC_VERSION_OUTPUT" | $GREP -i "80x86" > /dev/null 2>&1; then
+      COMPILER_CPU_TEST="80x86"
+    elif $ECHO "$CC_VERSION_OUTPUT" | $GREP -i "x86" > /dev/null 2>&1; then
+      COMPILER_CPU_TEST="x86"
+    elif $ECHO "$CC_VERSION_OUTPUT" | $GREP -i "x64" > /dev/null 2>&1; then
+      COMPILER_CPU_TEST="x64"
+    elif $ECHO "$CC_VERSION_OUTPUT" | $GREP -i "ARM64" > /dev/null 2>&1; then
+      COMPILER_CPU_TEST="ARM64"
+    else
+      COMPILER_CPU_TEXT="Unrecognized CL:[ $COMPILER_CPU_TEST ]"
+    fi
+
     if test "x$OPENJDK_TARGET_CPU" = "xx86"; then
       if test "x$COMPILER_CPU_TEST" != "x80x86" -a "x$COMPILER_CPU_TEST" != "xx86"; then
         AC_MSG_ERROR([Target CPU mismatch. We are building for $OPENJDK_TARGET_CPU but CL is for "$COMPILER_CPU_TEST"; expected "80x86" or "x86".])
