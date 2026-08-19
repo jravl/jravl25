@@ -128,8 +128,9 @@ class FFIType {
                 if (!(element instanceof PaddingLayout)) {
                     long ffiOffset = sizeTAtIndex(offsetsOut, offsetIdx++);
                     if (ffiOffset != expectedOffset) {
+                        String name = element.name0();
                         throw new IllegalArgumentException("Invalid group layout." +
-                                " Offset of '" + element.name().orElse("<unnamed>")
+                                " Offset of '" + (name != null ? name : "<unnamed>")
                                 + "': " + expectedOffset + " != " + ffiOffset);
                     }
                 }

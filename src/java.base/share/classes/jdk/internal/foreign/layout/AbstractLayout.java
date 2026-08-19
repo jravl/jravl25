@@ -28,6 +28,7 @@ package jdk.internal.foreign.layout;
 import jdk.internal.foreign.LayoutPath;
 import jdk.internal.foreign.Utils;
 import jdk.internal.invoke.MhUtil;
+import jdk.internal.vm.annotation.ForceInline;
 
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
@@ -51,24 +52,29 @@ public abstract sealed class AbstractLayout<L extends AbstractLayout<L> & Memory
 
     private final long byteSize;
     private final long byteAlignment;
-    private final Optional<String> name;
+    protected final String name;
 
-    AbstractLayout(long byteSize, long byteAlignment, Optional<String> name) {
+    AbstractLayout(long byteSize, long byteAlignment, String name) {
         this.byteSize = MemoryLayoutUtil.requireByteSizeValid(byteSize, true);
         this.byteAlignment = requirePowerOfTwoAndGreaterOrEqualToOne(byteAlignment);
-        this.name = Objects.requireNonNull(name);
+        this.name = name;
     }
 
     public final L withName(String name) {
-        return dup(byteAlignment(), Optional.of(name));
+        return dup(byteAlignment(), name);
     }
 
     @SuppressWarnings("unchecked")
     public final L withoutName() {
-        return name.isPresent() ? dup(byteAlignment(), Optional.empty()) : (L) this;
+        return name != null ? dup(byteAlignment(), null) : (L) this;
     }
 
+    @ForceInline
     public final Optional<String> name() {
+        return Optional.ofNullable(name);
+    }
+
+    public final String name0() {
         return name;
     }
 
@@ -130,11 +136,11 @@ public abstract sealed class AbstractLayout<L extends AbstractLayout<L> & Memory
     @Override
     public abstract String toString();
 
-    abstract L dup(long byteAlignment, Optional<String> name);
+    abstract L dup(long byteAlignment, String name);
 
     String decorateLayoutString(String s) {
-        if (name().isPresent()) {
-            s = String.format("%s(%s)", s, name().get());
+        if (name0() != null) {
+            s = String.format("%s(%s)", s, name0());
         }
         if (!hasNaturalAlignment()) {
             s = byteAlignment() + "%" + s;

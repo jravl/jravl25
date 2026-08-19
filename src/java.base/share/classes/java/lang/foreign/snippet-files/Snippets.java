@@ -320,8 +320,7 @@ class Snippets {
 
         void captureStateLayout() {
             String capturedNames = Linker.Option.captureStateLayout().memberLayouts().stream()
-                    .map(MemoryLayout::name)
-                    .flatMap(Optional::stream)
+                    .map(MemoryLayout::name0)
                     .map(Objects::toString)
                     .collect(Collectors.joining(", "));
         }

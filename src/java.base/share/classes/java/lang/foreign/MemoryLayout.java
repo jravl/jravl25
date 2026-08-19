@@ -464,6 +464,11 @@ public sealed interface MemoryLayout
     Optional<String> name();
 
     /**
+     * {@return the name if}
+     */
+    String name0();
+
+    /**
      * {@return a memory layout with the same characteristics as this layout, but with
      *          the given name}
      *

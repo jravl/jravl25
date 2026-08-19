@@ -65,7 +65,7 @@ public final class CaptureStateUtil {
         // Do not use Streams in order to enable "early" use in the init sequence.
         for (Class<?> c : new Class<?>[]{int.class, long.class}) {
             for (MemoryLayout layout : CAPTURE_LAYOUT.memberLayouts()) {
-                inputs.add(new SegmentExtractorKey(c, layout.name().orElseThrow()));
+                inputs.add(new SegmentExtractorKey(c, Objects.requireNonNull(layout.name0())));
             }
         }
 

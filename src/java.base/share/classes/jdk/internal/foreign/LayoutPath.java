@@ -139,8 +139,8 @@ public class LayoutPath {
         MemoryLayout elem = null;
         for (int i = 0; i < g.memberLayouts().size(); i++) {
             MemoryLayout l = g.memberLayouts().get(i);
-            if (l.name().isPresent() &&
-                l.name().get().equals(name)) {
+            String name0 = l.name0();
+            if (name0 != null && name0.equals(name)) {
                 elem = l;
                 break;
             } else if (g instanceof StructLayout) {

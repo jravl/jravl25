@@ -880,8 +880,7 @@ public sealed interface Linker permits AbstractLinker {
          * Clients can obtain the names of the supported captured value layouts as follows:
          * {@snippet lang = java:
          *    List<String> capturedNames = Linker.Option.captureStateLayout().memberLayouts().stream()
-         *        .map(MemoryLayout::name)
-         *        .flatMap(Optional::stream)
+         *        .map(MemoryLayout::name0)
          *        .toList();
          * }
          *
