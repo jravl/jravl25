@@ -85,6 +85,11 @@ public abstract sealed class AbstractPseudoInstruction
             return Optional.ofNullable(catchTypeEntry);
         }
 
+        @Override
+        public ClassEntry catchType0() {
+            return catchTypeEntry;
+        }
+
         ClassEntry catchTypeEntry() {
             return catchTypeEntry;
         }

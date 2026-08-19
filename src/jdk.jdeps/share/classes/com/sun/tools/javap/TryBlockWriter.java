@@ -114,13 +114,13 @@ public class TryBlockWriter extends InstructionDetailWriter {
                     print("[");
                     print(indexMap.get(entry));
                     print("] ");
-                    var ct = entry.catchType();
-                    if (ct.isEmpty())
+                    var ct = entry.catchType0();
+                    if (ct == null)
                         print("finally");
                     else {
-                        print("#" + ct.get().index());
+                        print("#" + ct.index());
                         print(" // ");
-                        constantWriter.write(ct.get().index());
+                        constantWriter.write(ct.index());
                     }
                     println();
                 }

@@ -324,9 +324,9 @@ public final class StackMapGenerator {
             if (start_pc >= 0 && end_pc >= 0 && end_pc > start_pc && handler_pc >= 0) {
                 if (start_pc < exMin) exMin = start_pc;
                 if (end_pc > exMax) exMax = end_pc;
-                var catchType = exhandler.catchType();
+                var catchType = exhandler.catchType0();
                 rawHandlers.add(new RawExceptionCatch(start_pc, end_pc, handler_pc,
-                        catchType.isPresent() ? cpIndexToType(catchType.get().index(), cp)
+                        catchType != null ? cpIndexToType(catchType.index(), cp)
                                 : Type.THROWABLE_TYPE));
             }
         }
@@ -364,21 +364,21 @@ public final class StackMapGenerator {
                   //cut from left
                   Label newStart = labelContext.newLabel();
                   labelContext.setLabelTarget(newStart, rangeEnd);
-                  it.set(new AbstractPseudoInstruction.ExceptionCatchImpl(e.handler(), newStart, e.tryEnd(), e.catchType()));
+                  it.set(new AbstractPseudoInstruction.ExceptionCatchImpl(e.handler(), newStart, e.tryEnd(), e.catchType0()));
               }
             } else if (rangeEnd >= handlerEnd) {
                 //cut from right
                 Label newEnd = labelContext.newLabel();
                 labelContext.setLabelTarget(newEnd, rangeStart);
-                it.set(new AbstractPseudoInstruction.ExceptionCatchImpl(e.handler(), e.tryStart(), newEnd, e.catchType()));
+                it.set(new AbstractPseudoInstruction.ExceptionCatchImpl(e.handler(), e.tryStart(), newEnd, e.catchType0()));
             } else {
                 //split
                 Label newStart = labelContext.newLabel();
                 labelContext.setLabelTarget(newStart, rangeEnd);
                 Label newEnd = labelContext.newLabel();
                 labelContext.setLabelTarget(newEnd, rangeStart);
-                it.set(new AbstractPseudoInstruction.ExceptionCatchImpl(e.handler(), e.tryStart(), newEnd, e.catchType()));
-                it.add(new AbstractPseudoInstruction.ExceptionCatchImpl(e.handler(), newStart, e.tryEnd(), e.catchType()));
+                it.set(new AbstractPseudoInstruction.ExceptionCatchImpl(e.handler(), e.tryStart(), newEnd, e.catchType0()));
+                it.add(new AbstractPseudoInstruction.ExceptionCatchImpl(e.handler(), newStart, e.tryEnd(), e.catchType0()));
             }
         }
     }

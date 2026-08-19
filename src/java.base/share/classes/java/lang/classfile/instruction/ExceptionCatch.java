@@ -82,6 +82,12 @@ public sealed interface ExceptionCatch extends PseudoInstruction
     Optional<ClassEntry> catchType();
 
     /**
+     * {@return the type of the exception to catch, or {@code null} if this handler
+     * catches everything}
+     */
+    ClassEntry catchType0();
+
+    /**
      * {@return an exception table pseudo-instruction}
      * @param handler the handler for the exception
      * @param tryStart the beginning of the instruction range for the guarded instructions

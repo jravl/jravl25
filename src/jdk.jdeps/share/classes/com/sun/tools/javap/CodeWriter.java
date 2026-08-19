@@ -205,12 +205,12 @@ public class CodeWriter extends BasicWriter {
                         attr.labelToBci(handler.tryEnd()),
                         attr.labelToBci(handler.handler())));
                 print("   ");
-                var catch_type = handler.catchType();
-                if (catch_type.isEmpty()) {
+                var catch_type = handler.catchType0();
+                if (catch_type == null) {
                     println("any");
                 } else {
                     print("Class ");
-                    println(constantWriter.stringValue(catch_type.get()));
+                    println(constantWriter.stringValue(catch_type));
                 }
             }
             indent(-1);
