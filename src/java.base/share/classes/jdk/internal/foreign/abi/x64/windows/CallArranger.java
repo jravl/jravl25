@@ -103,7 +103,8 @@ public class CallArranger {
         }
         var csb = new CallingSequenceBuilderHelper();
 
-        boolean returnInMemory = isInMemoryReturn(cDesc.returnLayout());
+        var returnLayout = cDesc.returnLayout0();
+        boolean returnInMemory = isInMemoryReturn(returnLayout);
         if (returnInMemory) {
             Class<?> carrier = MemorySegment.class;
             MemoryLayout layout = SharedUtils.C_POINTER;
@@ -111,8 +112,8 @@ public class CallArranger {
             if (forUpcall) {
                 csb.setReturnBindings(carrier, layout);
             }
-        } else if (cDesc.returnLayout().isPresent()) {
-            csb.setReturnBindings(mt.returnType(), cDesc.returnLayout().get());
+        } else if (returnLayout != null) {
+            csb.setReturnBindings(mt.returnType(), returnLayout);
         }
 
         for (int i = 0; i < mt.parameterCount(); i++) {
@@ -141,11 +142,9 @@ public class CallArranger {
                 bindings.callingSequence);
     }
 
-    private static boolean isInMemoryReturn(Optional<MemoryLayout> returnLayout) {
-        return returnLayout
-                .filter(GroupLayout.class::isInstance)
-                .filter(g -> !TypeClass.isRegisterAggregate(g))
-                .isPresent();
+    private static boolean isInMemoryReturn(MemoryLayout returnLayout) {
+        return returnLayout instanceof GroupLayout &&
+                !TypeClass.isRegisterAggregate(returnLayout);
     }
 
     static class StorageCalculator {

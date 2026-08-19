@@ -150,13 +150,14 @@ public final class SharedUtils {
         int imrAddrIdx = sequence.numLeadingParams();
         if (handle.type().parameterType(imrAddrIdx) != MemorySegment.class)
             throw new IllegalArgumentException("MemorySegment expected as third param: " + handle.type());
-        if (cDesc.returnLayout().isEmpty())
+        var returnLayout = cDesc.returnLayout0();
+        if (returnLayout == null)
             throw new IllegalArgumentException("Return layout needed: " + cDesc);
 
         MethodHandle ret = identity(MemorySegment.class); // (MemorySegment) MemorySegment
         handle = collectArguments(ret, 1, handle); // (MemorySegment, MemorySegment, SegmentAllocator, MemorySegment, ...) MemorySegment
         handle = mergeArguments(handle, 0, 1 + imrAddrIdx);  // (MemorySegment, MemorySegment, SegmentAllocator, ...) MemorySegment
-        handle = collectArguments(handle, 0, insertArguments(MH_ALLOC_BUFFER, 1, cDesc.returnLayout().get())); // (SegmentAllocator, MemorySegment, SegmentAllocator, ...) MemorySegment
+        handle = collectArguments(handle, 0, insertArguments(MH_ALLOC_BUFFER, 1, returnLayout)); // (SegmentAllocator, MemorySegment, SegmentAllocator, ...) MemorySegment
         handle = mergeArguments(handle, 0, 2);  // (SegmentAllocator, MemorySegment, ...) MemorySegment
         handle = swapArguments(handle, 0, 1); // (MemorySegment, SegmentAllocator, ...) MemorySegment
         return handle;
@@ -342,7 +343,7 @@ public final class SharedUtils {
     }
 
     public static MethodHandle maybeInsertAllocator(FunctionDescriptor descriptor, MethodHandle handle) {
-        if (descriptor.returnLayout().isEmpty() || !(descriptor.returnLayout().get() instanceof GroupLayout)) {
+        if (!(descriptor.returnLayout0() instanceof GroupLayout)) {
             // not returning segment, just insert a throwing allocator
             handle = insertArguments(handle, 1, THROWING_ALLOCATOR);
         }

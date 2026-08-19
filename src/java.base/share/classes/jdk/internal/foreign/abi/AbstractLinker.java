@@ -176,7 +176,10 @@ public abstract sealed class AbstractLinker implements Linker permits LinuxAArch
     }
 
     private void checkLayouts(FunctionDescriptor descriptor) {
-        descriptor.returnLayout().ifPresent(this::checkLayout);
+        var retLayout = descriptor.returnLayout0();
+        if (retLayout != null) {
+            this.checkLayout(retLayout);
+        }
         descriptor.argumentLayouts().forEach(this::checkLayout);
     }
 
@@ -341,10 +344,10 @@ public abstract sealed class AbstractLinker implements Linker permits LinuxAArch
     }
 
     private static FunctionDescriptor stripNames(FunctionDescriptor function) {
-        var retLayout = function.returnLayout();
-        if (retLayout.isEmpty()) {
+        var retLayout = function.returnLayout0();
+        if (retLayout == null) {
             return FunctionDescriptor.ofVoid(stripNames(function.argumentLayouts()));
         }
-        return FunctionDescriptor.of(stripNames(retLayout.get()), stripNames(function.argumentLayouts()));
+        return FunctionDescriptor.of(stripNames(retLayout), stripNames(function.argumentLayouts()));
     }
 }

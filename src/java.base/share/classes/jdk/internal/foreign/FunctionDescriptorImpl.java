@@ -24,6 +24,8 @@
  */
 package jdk.internal.foreign;
 
+import jdk.internal.vm.annotation.ForceInline;
+
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
@@ -63,8 +65,13 @@ public final class FunctionDescriptorImpl implements FunctionDescriptor {
     /**
      * {@return the return layout (if any) associated with this function descriptor}
      */
+    @ForceInline
     public Optional<MemoryLayout> returnLayout() {
         return Optional.ofNullable(resLayout);
+    }
+
+    public MemoryLayout returnLayout0() {
+        return resLayout;
     }
 
     /**
@@ -155,9 +162,7 @@ public final class FunctionDescriptorImpl implements FunctionDescriptor {
         return String.format("(%s)%s",
                 argLayouts.stream().map(Object::toString)
                         .collect(Collectors.joining()),
-                returnLayout()
-                        .map(Object::toString)
-                        .orElse("v"));
+                resLayout == null ? "v" : resLayout.toString());
     }
 
     /**

@@ -48,6 +48,7 @@ import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static java.lang.foreign.ValueLayout.*;
 import static java.lang.invoke.MethodHandles.foldArguments;
@@ -85,7 +86,7 @@ public final class FallbackLinker extends AbstractLinker {
         MemorySegment cif = makeCif(inferredMethodType, function, options, Arena.ofAuto());
 
         int capturedStateMask = options.capturedCallStateMask();
-        DowncallData invData = new DowncallData(cif, function.returnLayout().orElse(null),
+        DowncallData invData = new DowncallData(cif, function.returnLayout0(),
                 function.argumentLayouts(), capturedStateMask, options.allowsHeapAccess());
 
         MethodHandle target = MethodHandles.insertArguments(MH_DO_DOWNCALL, 2, invData);
@@ -109,7 +110,7 @@ public final class FallbackLinker extends AbstractLinker {
         assertNotEmpty(function);
         MemorySegment cif = makeCif(targetType, function, options, Arena.ofAuto());
 
-        UpcallData invData = new UpcallData(function.returnLayout().orElse(null), function.argumentLayouts(), cif);
+        UpcallData invData = new UpcallData(function.returnLayout0(), function.argumentLayouts(), cif);
         MethodHandle doUpcallMH = MethodHandles.insertArguments(MH_DO_UPCALL, 3, invData);
 
         return (target, scope) -> {
@@ -129,7 +130,7 @@ public final class FallbackLinker extends AbstractLinker {
         }
 
         MemorySegment returnType = methodType.returnType() != void.class
-                ? FFIType.toFFIType(function.returnLayout().orElseThrow(), abi, scope)
+                ? FFIType.toFFIType(Objects.requireNonNull(function.returnLayout0()), abi, scope)
                 : LibFallback.voidType();
 
         if (options.isVariadicFunction()) {
@@ -330,7 +331,10 @@ public final class FallbackLinker extends AbstractLinker {
     }
 
     private static void assertNotEmpty(FunctionDescriptor fd) {
-        fd.returnLayout().ifPresent(FallbackLinker::assertNotEmpty);
+        var returnLayout = fd.returnLayout0();
+        if (returnLayout != null) {
+            assertNotEmpty(returnLayout);
+        }
         fd.argumentLayouts().forEach(FallbackLinker::assertNotEmpty);
     }
 

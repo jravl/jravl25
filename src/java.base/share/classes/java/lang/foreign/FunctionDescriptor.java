@@ -56,6 +56,11 @@ public sealed interface FunctionDescriptor permits FunctionDescriptorImpl {
     Optional<MemoryLayout> returnLayout();
 
     /**
+     * {@return the return layout (if any) of this function descriptor}
+     */
+    MemoryLayout returnLayout0();
+
+    /**
      * {@return the argument layouts of this function descriptor (as an unmodifiable list)}
      */
     List<MemoryLayout> argumentLayouts();

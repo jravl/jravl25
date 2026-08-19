@@ -101,15 +101,15 @@ public class CallArranger {
         BindingCalculator argCalc = forUpcall ? new BoxBindingCalculator(true) : new UnboxBindingCalculator(true, options.allowsHeapAccess());
         BindingCalculator retCalc = forUpcall ? new UnboxBindingCalculator(false, false) : new BoxBindingCalculator(false);
 
-        boolean returnInMemory = isInMemoryReturn(cDesc.returnLayout());
+        var returnLayout = cDesc.returnLayout0();
+        boolean returnInMemory = isInMemoryReturn(returnLayout);
         if (returnInMemory) {
             Class<?> carrier = MemorySegment.class;
             MemoryLayout layout = SharedUtils.C_POINTER;
             csb.addArgumentBindings(carrier, layout, argCalc.getBindings(carrier, layout));
-        } else if (cDesc.returnLayout().isPresent()) {
+        } else if (returnLayout != null) {
             Class<?> carrier = mt.returnType();
-            MemoryLayout layout = cDesc.returnLayout().get();
-            csb.setReturnBindings(carrier, layout, retCalc.getBindings(carrier, layout));
+            csb.setReturnBindings(carrier, returnLayout, retCalc.getBindings(carrier, returnLayout));
         }
 
         for (int i = 0; i < mt.parameterCount(); i++) {
@@ -149,11 +149,9 @@ public class CallArranger {
                 bindings.callingSequence);
     }
 
-    private static boolean isInMemoryReturn(Optional<MemoryLayout> returnLayout) {
-        return returnLayout
-                .filter(GroupLayout.class::isInstance)
-                .filter(g -> TypeClass.classifyLayout(g).inMemory())
-                .isPresent();
+    private static boolean isInMemoryReturn(MemoryLayout returnLayout) {
+        return returnLayout instanceof GroupLayout &&
+                TypeClass.classifyLayout(returnLayout).inMemory();
     }
 
     static class StorageCalculator {
