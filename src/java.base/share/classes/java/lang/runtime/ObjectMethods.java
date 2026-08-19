@@ -389,7 +389,7 @@ public final class ObjectMethods {
         requireNonNull(recordClass);
         requireNonNull(names);
         requireNonNull(getters);
-        Arrays.stream(getters).forEach(Objects::requireNonNull);
+        Arrays.requireNonNull(getters);
         MethodType methodType;
         if (type instanceof MethodType mt)
             methodType = mt;

@@ -6241,4 +6241,26 @@ public final class Collections {
         @Override
         public Stream<E> parallelStream()   {return q.parallelStream();}
     }
+
+    /**
+     * Checks that the specified collection reference is not {@code null}
+     * and that it contains no {@code null} elements.
+     *
+     * <p>This method is designed primarily for validating collection parameters
+     * in public methods.
+     * Unlike {@link Objects#requireNonNull(Object)}, this method doesn't
+     * return the collection reference, this avoids the need to assign a
+     * return value that is never used.
+     *
+     * @param coll the collection to check for nullity of both the reference
+     *             and its elements
+     * @throws NullPointerException if {@code coll} is {@code null} or if
+     *         any element of {@code coll} is {@code null}
+     */
+    public static void requireNonNull(Collection<?> coll) {
+        if (coll == null) {
+            throw new NullPointerException();
+        }
+        coll.forEach(Objects::requireNonNull);
+    }
 }

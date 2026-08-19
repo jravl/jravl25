@@ -35,9 +35,10 @@ import jdk.internal.foreign.layout.UnionLayoutImpl;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.VarHandle;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Stream;
 
 /**
  * A memory layout describes the contents of a memory segment.
@@ -1088,11 +1089,9 @@ public sealed interface MemoryLayout
      * }
      */
     static StructLayout structLayout(MemoryLayout... elements) {
-        Objects.requireNonNull(elements);
+        Arrays.requireNonNull(elements);
         return Utils.wrapOverflow(() ->
-                StructLayoutImpl.of(Stream.of(elements)
-                        .map(Objects::requireNonNull)
-                        .toList()));
+                StructLayoutImpl.of(List.of(elements)));
     }
 
     /**
@@ -1102,9 +1101,7 @@ public sealed interface MemoryLayout
      * @return a union layout with the given member layouts
      */
     static UnionLayout unionLayout(MemoryLayout... elements) {
-        Objects.requireNonNull(elements);
-        return UnionLayoutImpl.of(Stream.of(elements)
-                .map(Objects::requireNonNull)
-                .toList());
+        Arrays.requireNonNull(elements);
+        return UnionLayoutImpl.of(List.of(elements));
     }
 }

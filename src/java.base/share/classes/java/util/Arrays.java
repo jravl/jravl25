@@ -8753,4 +8753,27 @@ public final class Arrays {
 
         return aLength != bLength ? length : -1;
     }
+
+    /**
+     * Checks that the specified array reference is not {@code null} and
+     * that it contains no {@code null} elements.
+     *
+     * <p>This method is designed primarily for validating array parameters
+     * in public methods.
+     * Unlike {@link Objects#requireNonNull(Object)}, this method doesn't
+     * return the array reference, this avoids the need to assign a
+     * return value that is never used.
+     *
+     * @param a the array to check for nullity of both the reference and its elements
+     *
+     * @throws NullPointerException if {@code a} is {@code null} or its elements contains {@code null}
+     */
+    public static void requireNonNull(Object[] a) {
+        if (a == null) {
+            throw new NullPointerException();
+        }
+        for (Object v : a) {
+            if (v == null) throw new NullPointerException();
+        }
+    }
 }
