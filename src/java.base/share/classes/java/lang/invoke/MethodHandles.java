@@ -6472,7 +6472,12 @@ assertEquals("boojum", (String) catTrace.invokeExact("boo", "jum"));
                 iterationVariableTypes.add(in == null ? st.type().returnType() : in.type().returnType());
             }
         }
-        final List<Class<?>> commonPrefix = iterationVariableTypes.stream().filter(t -> t != void.class).toList();
+        final List<Class<?>> commonPrefix = new ArrayList<>(iterationVariableTypes.size());
+        for (var t : iterationVariableTypes) {
+            if (t != void.class) {
+                commonPrefix.add(t);
+            }
+        }
 
         // Step 1B: determine loop parameters (A...).
         final List<Class<?>> commonSuffix = buildCommonSuffix(init, step, pred, fini, commonPrefix.size());
@@ -6481,9 +6486,13 @@ assertEquals("boojum", (String) catTrace.invokeExact("boo", "jum"));
         // Step 1C: determine loop return type.
         // Step 1D: check other types.
         // local variable required here; see JDK-8223553
-        Stream<Class<?>> cstream = fini.stream().filter(Objects::nonNull).map(MethodHandle::type)
-                .map(MethodType::returnType);
-        final Class<?> loopReturnType = cstream.findFirst().orElse(void.class);
+        Class<?> loopReturnType = void.class;
+        for (var mh : fini) {
+            if (mh != null) {
+                loopReturnType = mh.type().returnType();
+                break;
+            }
+        }
         loopChecks1cd(pred, fini, loopReturnType);
 
         // Step 2: determine parameter lists.
@@ -6558,35 +6567,57 @@ assertEquals("boojum", (String) catTrace.invokeExact("boo", "jum"));
     }
 
     private static void loopChecks1b(List<MethodHandle> init, List<Class<?>> commonSuffix) {
-        if (init.stream().filter(Objects::nonNull).map(MethodHandle::type).
-                anyMatch(t -> !t.effectivelyIdenticalParameters(0, commonSuffix))) {
-            throw newIllegalArgumentException("found non-effectively identical init parameter type lists: " + init +
-                    " (common suffix: " + commonSuffix + ")");
+        for (var mh : init) {
+            if (mh != null) {
+                if (!mh.type().effectivelyIdenticalParameters(0, commonSuffix)) {
+                    throw newIllegalArgumentException("found non-effectively identical init parameter type lists: " + init +
+                            " (common suffix: " + commonSuffix + ")");
+                }
+            }
         }
     }
 
     private static void loopChecks1cd(List<MethodHandle> pred, List<MethodHandle> fini, Class<?> loopReturnType) {
-        if (fini.stream().filter(Objects::nonNull).map(MethodHandle::type).map(MethodType::returnType).
-                anyMatch(t -> t != loopReturnType)) {
-            throw newIllegalArgumentException("found non-identical finalizer return types: " + fini + " (return type: " +
-                    loopReturnType + ")");
+        for (var mh : fini) {
+            if (mh != null) {
+                if (mh.type().returnType() != loopReturnType) {
+                    throw newIllegalArgumentException("found non-identical finalizer return types: " + fini + " (return type: " +
+                            loopReturnType + ")");
+                }
+            }
         }
-
-        if (pred.stream().noneMatch(Objects::nonNull)) {
+        boolean allNull = true;
+        for (var mh : pred) {
+            if (mh != null) {
+                if (mh.type().returnType() != boolean.class) {
+                    throw newIllegalArgumentException("predicates must have boolean return type", pred);
+                }
+                allNull = false;
+            }
+        }
+        if (allNull) {
             throw newIllegalArgumentException("no predicate found", pred);
-        }
-        if (pred.stream().filter(Objects::nonNull).map(MethodHandle::type).map(MethodType::returnType).
-                anyMatch(t -> t != boolean.class)) {
-            throw newIllegalArgumentException("predicates must have boolean return type", pred);
         }
     }
 
     private static void loopChecks2(List<MethodHandle> step, List<MethodHandle> pred, List<MethodHandle> fini, List<Class<?>> commonParameterSequence) {
-        if (Stream.of(step, pred, fini).flatMap(List::stream).filter(Objects::nonNull).map(MethodHandle::type).
-                anyMatch(t -> !t.effectivelyIdenticalParameters(0, commonParameterSequence))) {
-            throw newIllegalArgumentException("found non-effectively identical parameter type lists:\nstep: " + step +
-                    "\npred: " + pred + "\nfini: " + fini + " (common parameter sequence: " + commonParameterSequence + ")");
+        if (    loopChecks2a(step, commonParameterSequence) &&
+                loopChecks2a(pred, commonParameterSequence) &&
+                loopChecks2a(fini, commonParameterSequence)) {
+            return;
         }
+        throw newIllegalArgumentException("found non-effectively identical parameter type lists:\nstep: " + step +
+                "\npred: " + pred + "\nfini: " + fini + " (common parameter sequence: " + commonParameterSequence + ")");
+    }
+    private static boolean loopChecks2a(List<MethodHandle> list, List<Class<?>> commonParameterSequence) {
+        for (var mh : list) {
+            if (mh != null) {
+                if (!mh.type().effectivelyIdenticalParameters(0, commonParameterSequence)) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     private static MethodHandle[] fillParameterTypes(List<MethodHandle> hs, final List<Class<?>> targetParams) {
