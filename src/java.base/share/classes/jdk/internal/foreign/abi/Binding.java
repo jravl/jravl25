@@ -347,6 +347,27 @@ public sealed interface Binding {
         throw new IllegalArgumentException("Unknown conversion: " + fromType + " -> " + toType);
     }
 
+    /**
+     * Iterates over the {@code src} list, converts elements that are instances of the
+     * specified {@code type} to that type, and adds them to the {@code dst} list.
+     *
+     * @param type the target type class
+     * @param src  the source list
+     * @param dst  the destination list
+     * @param <T>  the target type
+     */
+    static <T extends Binding> void addInstanceof(Class<T> type, List<Binding> src, List<T> dst) {
+        for (var binding : src) {
+            if (type.isInstance(binding)) {
+                dst.add(type.cast(binding));
+            }
+        }
+    }
+    static <T extends Binding> void addInstanceof(List<List<Binding>> src, List<T> dst, Class<T> type) {
+        for (var bindings : src) {
+            addInstanceof(type, bindings, dst);
+        }
+    }
 
     static Binding.Builder builder() {
         return new Binding.Builder();

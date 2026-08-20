@@ -39,9 +39,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Stream;
 
 import static java.lang.invoke.MethodHandles.*;
 import static java.lang.invoke.MethodType.methodType;
@@ -68,7 +66,7 @@ public class DowncallLinker {
     }
 
     public MethodHandle getBoundMethodHandle() {
-        Binding.VMStore[] argMoves = argMoveBindingsStream(callingSequence).toArray(Binding.VMStore[]::new);
+        Binding.VMStore[] argMoves = argMoveBindings(callingSequence);
         Binding.VMLoad[] retMoves = retMoveBindings(callingSequence);
 
         MethodType leafType = callingSequence.calleeMethodType();
@@ -87,7 +85,7 @@ public class DowncallLinker {
 
         if (USE_SPEC) {
             handle = BindingSpecializer.specializeDowncall(handle, callingSequence, abi);
-         } else {
+        } else {
             InvocationData invData = new InvocationData(handle, callingSequence);
             handle = insertArguments(MH_INVOKE_INTERP_BINDINGS.bindTo(this), 2, invData);
             MethodType interpType = callingSequence.callerMethodType();
@@ -99,7 +97,7 @@ public class DowncallLinker {
             MethodHandle collectorInterp = makeCollectorHandle(interpType);
             handle = collectArguments(handle, 1, collectorInterp);
             handle = handle.asType(handle.type().changeReturnType(interpType.returnType()));
-         }
+        }
 
         assert handle.type().parameterType(0) == SegmentAllocator.class;
         assert handle.type().parameterType(1) == MemorySegment.class;
@@ -119,24 +117,25 @@ public class DowncallLinker {
                 .asType(type.changeReturnType(Object[].class));
     }
 
-    private Stream<Binding.VMStore> argMoveBindingsStream(CallingSequence callingSequence) {
-        return callingSequence.argumentBindings()
-                .filter(Binding.VMStore.class::isInstance)
-                .map(Binding.VMStore.class::cast);
+    private static Binding.VMStore[] argMoveBindings(CallingSequence callingSequence) {
+        List<Binding.VMStore> list = new ArrayList<>();
+        Binding.addInstanceof(callingSequence.argumentBindings(), list, Binding.VMStore.class);
+        return list.toArray(new Binding.VMStore[0]);
     }
 
-    private Binding.VMLoad[] retMoveBindings(CallingSequence callingSequence) {
-        return retMoveBindingsStream(callingSequence).toArray(Binding.VMLoad[]::new);
-    }
-
-    private Stream<Binding.VMLoad> retMoveBindingsStream(CallingSequence callingSequence) {
-        return callingSequence.returnBindings().stream()
-                .filter(Binding.VMLoad.class::isInstance)
-                .map(Binding.VMLoad.class::cast);
+    private static Binding.VMLoad[] retMoveBindings(CallingSequence callingSequence) {
+        List<Binding> returnBindings = callingSequence.returnBindings();
+        List<Binding.VMLoad> list = new ArrayList<>(returnBindings.size());
+        Binding.addInstanceof(Binding.VMLoad.class, returnBindings, list);
+        return list.toArray(new Binding.VMLoad[0]);
     }
 
     private VMStorage[] toStorageArray(Binding.Move[] moves) {
-        return Arrays.stream(moves).map(Binding.Move::storage).toArray(VMStorage[]::new);
+        VMStorage[] array = new VMStorage[moves.length];
+        for (int i = 0; i < moves.length; ++i) {
+            array[i] = moves[i].storage();
+        }
+        return array;
     }
 
     private record InvocationData(MethodHandle leaf, CallingSequence callingSequence) {}

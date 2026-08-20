@@ -27,7 +27,6 @@ package jdk.internal.foreign.abi;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.invoke.MethodType;
 import java.util.List;
-import java.util.stream.Stream;
 
 public class CallingSequence {
     private final boolean forUpcall;
@@ -81,8 +80,8 @@ public class CallingSequence {
         return argumentBindings.get(i);
     }
 
-    public Stream<Binding> argumentBindings() {
-        return argumentBindings.stream().flatMap(List::stream);
+    public List<List<Binding>> argumentBindings() {
+        return argumentBindings;
     }
 
     public List<Binding> returnBindings() {

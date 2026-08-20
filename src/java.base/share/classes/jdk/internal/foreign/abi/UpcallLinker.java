@@ -32,11 +32,12 @@ import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.UnaryOperator;
-import java.util.stream.Stream;
 
 import static java.lang.invoke.MethodHandles.*;
 import static java.lang.invoke.MethodType.methodType;
@@ -110,27 +111,24 @@ public class UpcallLinker {
     }
 
     private static void checkPrimitive(MethodType type) {
-        if (!type.returnType().isPrimitive()
-                || type.parameterList().stream().anyMatch(p -> !p.isPrimitive()))
+        if (!type.returnType().isPrimitive())
             throw new IllegalArgumentException("MethodHandle type must be primitive: " + type);
-    }
-
-    private static Stream<Binding.VMLoad> argMoveBindingsStream(CallingSequence callingSequence) {
-        return callingSequence.argumentBindings()
-                .filter(Binding.VMLoad.class::isInstance)
-                .map(Binding.VMLoad.class::cast);
+        for (var param : type.parameterArray())
+            if (!param.isPrimitive())
+                throw new IllegalArgumentException("MethodHandle type must be primitive: " + type);
     }
 
     private static Binding.VMLoad[] argMoveBindings(CallingSequence callingSequence) {
-        return argMoveBindingsStream(callingSequence)
-                .toArray(Binding.VMLoad[]::new);
+        List<Binding.VMLoad> list = new ArrayList<>();
+        Binding.addInstanceof(callingSequence.argumentBindings(), list, Binding.VMLoad.class);
+        return list.toArray(new Binding.VMLoad[0]);
     }
 
     private static Binding.VMStore[] retMoveBindings(CallingSequence callingSequence) {
-        return callingSequence.returnBindings().stream()
-                .filter(Binding.VMStore.class::isInstance)
-                .map(Binding.VMStore.class::cast)
-                .toArray(Binding.VMStore[]::new);
+        List<Binding> returnBindings = callingSequence.returnBindings();
+        List<Binding.VMStore> list = new ArrayList<>(returnBindings.size());
+        Binding.addInstanceof(Binding.VMStore.class, returnBindings, list);
+        return list.toArray(new Binding.VMStore[0]);
     }
 
     private record InvocationData(Map<VMStorage, Integer> argIndexMap,

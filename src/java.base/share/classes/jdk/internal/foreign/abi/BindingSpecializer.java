@@ -438,10 +438,16 @@ public class BindingSpecializer {
     }
 
     private boolean anyArgNeedsScope() {
-        return callingSequence.argumentBindings()
-                .filter(BoxAddress.class::isInstance)
-                .map(BoxAddress.class::cast)
-                .anyMatch(BoxAddress::needsScope);
+        for (var bindings : callingSequence.argumentBindings()) {
+            for (var binding : bindings) {
+                if (binding instanceof BoxAddress) {
+                    if (((BoxAddress) binding).needsScope()) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     private boolean shouldAcquire(int paramIndex) {
