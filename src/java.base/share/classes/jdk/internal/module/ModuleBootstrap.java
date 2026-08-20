@@ -46,7 +46,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.JavaLangModuleAccess;
@@ -340,25 +339,23 @@ public final class ModuleBootstrap {
             // If `--add-modules ALL-SYSTEM` is specified then all observable system
             // modules will be resolved.
             if (addAllSystemModules) {
-                ModuleFinder f = finder;  // observable modules
-                systemModuleFinder.findAll()
-                    .stream()
-                    .map(ModuleReference::descriptor)
-                    .map(ModuleDescriptor::name)
-                    .filter(mn -> f.find(mn).isPresent())  // observable
-                    .forEach(mn -> roots.add(mn));
+                for (var modRef : systemModuleFinder.findAll()) {
+                    String mn = modRef.descriptor().name();
+                    if (finder.find(mn).isPresent()) {  // observable
+                        roots.add(mn);
+                    }
+                }
             }
 
             // If `--add-modules ALL-MODULE-PATH` is specified then all observable
             // modules on the application module path will be resolved.
             if (appModulePath != null && addAllApplicationModules) {
-                ModuleFinder f = finder;  // observable modules
-                appModulePath.findAll()
-                    .stream()
-                    .map(ModuleReference::descriptor)
-                    .map(ModuleDescriptor::name)
-                    .filter(mn -> f.find(mn).isPresent())  // observable
-                    .forEach(mn -> roots.add(mn));
+                for (var modRef : appModulePath.findAll()) {
+                    String mn = modRef.descriptor().name();
+                    if (finder.find(mn).isPresent()) {  // observable
+                        roots.add(mn);
+                    }
+                }
             }
         } else {
             // no resolution case
@@ -387,10 +384,11 @@ public final class ModuleBootstrap {
 
         // check that modules specified to --patch-module are resolved
         if (isPatched) {
-            patcher.patchedModules()
-                    .stream()
-                    .filter(mn -> cf.findModule(mn).isEmpty())
-                    .forEach(mn -> warnUnknownModule(PATCH_MODULE, mn));
+            for (var mn : patcher.patchedModules()) {
+                if (cf.findModule(mn).isEmpty()) {
+                    warnUnknownModule(PATCH_MODULE, mn);
+                }
+            }
         }
 
         Counters.add("jdk.module.boot.4.resolveTime");
@@ -514,10 +512,13 @@ public final class ModuleBootstrap {
      * modular JAR files.
      */
     private static boolean allJrtOrModularJar(Configuration cf) {
-        return !cf.modules().stream()
-                .map(m -> m.reference().location().orElseThrow())
-                .anyMatch(uri -> !uri.getScheme().equalsIgnoreCase("jrt")
-                        && !isJarFile(uri));
+        for (var m : cf.modules()) {
+            URI uri = m.reference().location().orElseThrow();
+            if (!uri.getScheme().equalsIgnoreCase("jrt") && !isJarFile(uri)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -536,11 +537,17 @@ public final class ModuleBootstrap {
      * Returns true if the configuration contains modules with overlapping packages.
      */
     private static boolean containsSplitPackages(Configuration cf) {
-        boolean found = cf.modules().stream()
-                .map(m -> m.reference().descriptor().packages())
-                .flatMap(Set::stream)
-                .allMatch(new HashSet<>()::add);
-        return !found;
+        HashSet<String> set = new HashSet<>();
+        for (var m : cf.modules()) {
+            var pkgs = m.reference().descriptor().packages();
+            for (var pkg : pkgs) {
+                if (!set.add(pkg)) {
+                    return false;
+                }
+            }
+
+        }
+        return true;
     }
 
     /**
@@ -583,15 +590,18 @@ public final class ModuleBootstrap {
         Map<String, ModuleReference> map = new HashMap<>();
 
         // root modules and their transitive dependences
-        cf.modules().stream()
-            .map(ResolvedModule::reference)
-            .forEach(mref -> map.put(mref.descriptor().name(), mref));
+        for (var m : cf.modules()) {
+            var mref = m.reference();
+            map.put(mref.descriptor().name(), mref);
+        }
 
         // additional modules
-        otherMods.stream()
-            .map(finder::find)
-            .flatMap(Optional::stream)
-            .forEach(mref -> map.putIfAbsent(mref.descriptor().name(), mref));
+        for (var m : otherMods) {
+            var mref = finder.find(m);
+            if (mref.isPresent()) {
+                map.putIfAbsent(mref.get().descriptor().name(), mref.get());
+            }
+        }
 
         // set of modules that are observable
         Set<ModuleReference> mrefs = new HashSet<>(map.values());
@@ -980,9 +990,12 @@ public final class ModuleBootstrap {
      * Returns true if the configuration contains an incubator module.
      */
     private static boolean containsIncubatorModule(Configuration cf) {
-        return cf.modules().stream()
-                .map(ResolvedModule::reference)
-                .anyMatch(ModuleResolution::hasIncubatingWarning);
+        for (var mod : cf.modules()) {
+            if (ModuleResolution.hasIncubatingWarning(mod.reference())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -1038,20 +1051,14 @@ public final class ModuleBootstrap {
      * system property prefix.
      */
     static String option(String prefix) {
-        switch (prefix) {
-            case "jdk.module.addexports.":
-                return ADD_EXPORTS;
-            case "jdk.module.addopens.":
-                return ADD_OPENS;
-            case "jdk.module.addreads.":
-                return ADD_READS;
-            case "jdk.module.patch.":
-                return PATCH_MODULE;
-            case "jdk.module.addmods.":
-                return ADD_MODULES;
-            default:
-                throw new IllegalArgumentException(prefix);
-        }
+        return switch (prefix) {
+            case "jdk.module.addexports." -> ADD_EXPORTS;
+            case "jdk.module.addopens." -> ADD_OPENS;
+            case "jdk.module.addreads." -> ADD_READS;
+            case "jdk.module.patch." -> PATCH_MODULE;
+            case "jdk.module.addmods." -> ADD_MODULES;
+            default -> throw new IllegalArgumentException(prefix);
+        };
     }
 
     /**
@@ -1070,9 +1077,10 @@ public final class ModuleBootstrap {
             Objects.requireNonNull(name);
             Map<String, ModuleReference> nameToModule = this.nameToModule;
             if (nameToModule == null) {
-                this.nameToModule = nameToModule = mrefs.stream()
-                        .collect(Collectors.toMap(m -> m.descriptor().name(),
-                                                  Function.identity()));
+                this.nameToModule = nameToModule = new HashMap<>();
+                for (var mref : mrefs) {
+                    nameToModule.put(mref.descriptor().name(), mref);
+                }
             }
             return Optional.ofNullable(nameToModule.get(name));
         }
