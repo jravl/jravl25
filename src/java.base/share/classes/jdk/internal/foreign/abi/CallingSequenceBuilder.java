@@ -95,9 +95,15 @@ public class CallingSequenceBuilder {
     }
 
     private boolean needsReturnBuffer() {
-        return outputBindings.stream()
-            .filter(Binding.Move.class::isInstance)
-            .count() > 1;
+        int count = 0;
+        for (var binding : outputBindings) {
+            if (binding instanceof Binding.Move) {
+                if (++count > 1) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public CallingSequence build() {
@@ -156,18 +162,25 @@ public class CallingSequenceBuilder {
 
     private MethodType computeTypeHelper(Class<? extends Binding.Move> inputVMClass,
                                          Class<? extends Binding.Move> outputVMClass) {
-        Class<?>[] paramTypes = inputBindings.stream()
-                .flatMap(List::stream)
-                .filter(inputVMClass::isInstance)
-                .map(inputVMClass::cast)
-                .map(Binding.Move::type)
-                .toArray(Class<?>[]::new);
+        List<Class<?>> paramTypes = new ArrayList<>();
+        for (var bindings : inputBindings) {
+            for (var binding : bindings) {
+                if (inputVMClass.isInstance(binding)) {
+                    paramTypes.add(((Binding.Move) binding).type());
+                }
+            }
+        }
 
-        Binding.Move[] retMoves = outputBindings.stream()
-                .filter(outputVMClass::isInstance)
-                .map(outputVMClass::cast)
-                .toArray(Binding.Move[]::new);
-        Class<?> returnType = retMoves.length == 1 ? retMoves[0].type() : void.class;
+        Class<?> returnType = void.class;
+        for (var binding : outputBindings) {
+            if (outputVMClass.isInstance(binding)) {
+                if (returnType != void.class) {
+                    returnType = void.class;
+                    break;
+                }
+                returnType = ((Binding.Move) binding).type();
+            }
+        }
 
         return methodType(returnType, paramTypes);
     }
@@ -191,13 +204,13 @@ public class CallingSequenceBuilder {
     }
 
     private long computeReturnBufferSize() {
-        return outputBindings.stream()
-                .filter(Binding.Move.class::isInstance)
-                .map(Binding.Move.class::cast)
-                .map(Binding.Move::storage)
-                .map(VMStorage::type)
-                .mapToLong(abi.arch::typeSize)
-                .sum();
+        long size = 0;
+        for (var binding : outputBindings) {
+            if (binding instanceof Binding.Move move) {
+                size += abi.arch.typeSize(move.storage().type());
+            }
+        }
+        return size;
     }
 
     private void verifyBindings(boolean forArguments, Class<?> carrier, List<Binding> bindings) {
