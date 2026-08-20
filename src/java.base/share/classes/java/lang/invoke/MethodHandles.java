@@ -6448,12 +6448,20 @@ assertEquals("boojum", (String) catTrace.invokeExact("boo", "jum"));
         List<MethodHandle> pred = new ArrayList<>();
         List<MethodHandle> fini = new ArrayList<>();
 
-        Stream.of(clauses).filter(c -> Stream.of(c).anyMatch(Objects::nonNull)).forEach(clause -> {
-            init.add(clause[0]); // all clauses have at least length 1
-            step.add(clause.length <= 1 ? null : clause[1]);
-            pred.add(clause.length <= 2 ? null : clause[2]);
-            fini.add(clause.length <= 3 ? null : clause[3]);
-        });
+        for (var clause : clauses) {
+            boolean hasNonNull = false;
+            for (var mh : clause)
+                if (mh != null) {
+                    hasNonNull = true;
+                    break;
+                }
+            if (hasNonNull) {
+                init.add(clause[0]); // all clauses have at least length 1
+                step.add(clause.length <= 1 ? null : clause[1]);
+                pred.add(clause.length <= 2 ? null : clause[2]);
+                fini.add(clause.length <= 3 ? null : clause[3]);
+            }
+        }
 
         assert Stream.of(init, step, pred, fini).map(List::size).distinct().count() == 1;
         final int nclauses = init.size();
@@ -6535,11 +6543,13 @@ assertEquals("boojum", (String) catTrace.invokeExact("boo", "jum"));
         if (clauses == null || clauses.length == 0) {
             throw newIllegalArgumentException("null or no clauses passed");
         }
-        if (Stream.of(clauses).anyMatch(Objects::isNull)) {
-            throw newIllegalArgumentException("null clauses are not allowed");
-        }
-        if (Stream.of(clauses).anyMatch(c -> c.length > 4)) {
-            throw newIllegalArgumentException("All loop clauses must be represented as MethodHandle arrays with at most 4 elements.");
+        for (var clause : clauses) {
+            if (clause == null) {
+                throw newIllegalArgumentException("null clauses are not allowed");
+            }
+            if (clause.length > 4) {
+                throw newIllegalArgumentException("All loop clauses must be represented as MethodHandle arrays with at most 4 elements.");
+            }
         }
     }
 
