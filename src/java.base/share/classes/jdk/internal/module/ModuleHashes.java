@@ -35,6 +35,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Formatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -205,17 +206,17 @@ public final class ModuleHashes {
     public String toString() {
         StringBuilder sb = new StringBuilder(algorithm);
         sb.append(" ");
-        nameToHash.entrySet()
-                .stream()
-                .sorted(Map.Entry.comparingByKey())
-                .forEach(e -> {
-                    sb.append(e.getKey());
-                    sb.append("=");
-                    byte[] ba = e.getValue();
-                    for (byte b : ba) {
-                        sb.append(String.format("%02x", b & 0xff));
-                    }
-                });
+        var entrySet = nameToHash.entrySet();
+        Map.Entry<String, byte[]>[] entries = entrySet.toArray(new Map.Entry[0]);
+        Arrays.sort(entries, Map.Entry.comparingByKey());
+        var formator = new Formatter(sb);
+        for (var entry : entries) {
+            sb.append(entry.getKey())
+                    .append('=');
+            for (byte b : entry.getValue()) {
+                formator.format("%02x", b & 0xff);
+            }
+        }
         return sb.toString();
     }
 
