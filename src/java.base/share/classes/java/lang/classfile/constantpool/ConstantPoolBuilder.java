@@ -33,6 +33,7 @@ import java.lang.classfile.attribute.ConstantValueAttribute;
 import java.lang.classfile.instruction.ConstantInstruction;
 import java.lang.constant.*;
 import java.lang.invoke.MethodHandleInfo;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -571,8 +572,9 @@ public sealed interface ConstantPoolBuilder
      */
     default BootstrapMethodEntry bsmEntry(DirectMethodHandleDesc methodReference,
                                           List<ConstantDesc> arguments) {
-        return bsmEntry(methodHandleEntry(methodReference),
-                arguments.stream().map(this::loadableConstantEntry).toList());
+        List<LoadableConstantEntry> list = new ArrayList<>(arguments.size());
+        arguments.forEach(arg -> list.add(loadableConstantEntry(arg)));
+        return bsmEntry(methodHandleEntry(methodReference), list);
     }
 
     /**

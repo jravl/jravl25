@@ -28,6 +28,7 @@ import java.lang.classfile.TypeKind;
 import java.lang.constant.ClassDesc;
 import java.lang.constant.ConstantDesc;
 import java.lang.constant.DynamicConstantDesc;
+import java.util.List;
 
 import jdk.internal.classfile.impl.AbstractPoolEntry;
 import jdk.internal.classfile.impl.Util;
@@ -94,12 +95,15 @@ public sealed interface ConstantDynamicEntry
      *      ConstantPoolBuilder::constantDynamicEntry(DynamicConstantDesc)
      */
     default DynamicConstantDesc<?> asSymbol() {
+        var bsmArgs = bootstrap().arguments();
+        ConstantDesc[] descs = new ConstantDesc[bsmArgs.size()];
+        for (int i = 0; i < bsmArgs.size(); ++i) {
+            descs[i] = bsmArgs.get(i).constantValue();
+        }
         return DynamicConstantDesc.ofNamed(bootstrap().bootstrapMethod().asSymbol(),
                                            name().stringValue(),
                                            typeSymbol(),
-                                           bootstrap().arguments().stream()
-                                                      .map(LoadableConstantEntry::constantValue)
-                                                      .toArray(ConstantDesc[]::new));
+                                           descs);
     }
 
     /**

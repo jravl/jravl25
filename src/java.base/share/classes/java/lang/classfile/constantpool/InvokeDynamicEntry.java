@@ -85,11 +85,14 @@ public sealed interface InvokeDynamicEntry
      *      ConstantPoolBuilder::invokeDynamicEntry(DynamicCallSiteDesc)
      */
     default DynamicCallSiteDesc asSymbol() {
+        var bsmArgs = bootstrap().arguments();
+        ConstantDesc[] descs = new ConstantDesc[bsmArgs.size()];
+        for (int i = 0; i < bsmArgs.size(); ++i) {
+            descs[i] = bsmArgs.get(i).constantValue();
+        }
         return DynamicCallSiteDesc.of(bootstrap().bootstrapMethod().asSymbol(),
                                       name().stringValue(),
                                       typeSymbol(),
-                                      bootstrap().arguments().stream()
-                                                 .map(LoadableConstantEntry::constantValue)
-                                                 .toArray(ConstantDesc[]::new));
+                                      descs);
     }
 }
