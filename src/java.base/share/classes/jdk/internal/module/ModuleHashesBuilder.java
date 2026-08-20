@@ -38,8 +38,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.stream.Stream;
-import static java.util.stream.Collectors.*;
 
 /**
  * A Builder to compute ModuleHashes from a given configuration
@@ -98,28 +96,29 @@ public class ModuleHashesBuilder {
         // module and has not been hashed during the traversal.
         Set<String> mods = new HashSet<>();
         Map<String, ModuleHashes> hashes = new TreeMap<>();
-        builder.build()
-               .orderedNodes()
-               .filter(mn -> roots.contains(mn) && !mods.contains(mn))
-               .forEach(mn -> {
-                   // Compute hashes of the modules that depend on mn directly and
-                   // indirectly excluding itself.
-                   Set<String> ns = transposedGraph.dfs(mn)
-                       .stream()
-                       .filter(n -> !n.equals(mn) && hashModuleCandidates.contains(n))
-                       .collect(toSet());
-                   mods.add(mn);
-                   mods.addAll(ns);
+        for (var mn : builder.build().orderedNodes()) {
+            if (roots.contains(mn) && !mods.contains(mn)) {
+                // Compute hashes of the modules that depend on mn directly and
+                // indirectly excluding itself.
+                var dfs = transposedGraph.dfs(mn);
+                Set<String> ns = new HashSet<>(dfs.size());
+                for (var n : dfs) {
+                    if (!n.equals(mn) && hashModuleCandidates.contains(n)) {
+                        ns.add(n);
+                    }
+                }
+                mods.add(mn);
+                mods.addAll(ns);
 
-                   if (!ns.isEmpty()) {
-                       Set<ModuleReference> mrefs = ns.stream()
-                               .map(name -> configuration.findModule(name)
-                                                         .orElseThrow(InternalError::new))
-                               .map(ResolvedModule::reference)
-                               .collect(toSet());
-                       hashes.put(mn, ModuleHashes.generate(mrefs, "SHA-256"));
-                   }
-               });
+                if (!ns.isEmpty()) {
+                    Set<ModuleReference> mrefs = new HashSet<>(ns.size());
+                    for (var name : ns) {
+                        mrefs.add(configuration.findModule(name).orElseThrow(InternalError::new).reference());
+                    }
+                    hashes.put(mn, ModuleHashes.generate(mrefs, "SHA-256"));
+                }
+            }
+        }
         return hashes;
     }
 
@@ -154,9 +153,8 @@ public class ModuleHashesBuilder {
         /**
          * Returns nodes sorted in topological order.
          */
-        public Stream<T> orderedNodes() {
-            TopoSorter<T> sorter = new TopoSorter<>(this);
-            return sorter.result.stream();
+        public Deque<T> orderedNodes() {
+            return new TopoSorter<>(this).result;
         }
 
         /**
@@ -182,9 +180,7 @@ public class ModuleHashesBuilder {
             Builder<T> builder = new Builder<>();
             nodes.forEach(builder::addNode);
             // reverse edges
-            edges.keySet().forEach(u -> {
-                edges.get(u).forEach(v -> builder.addEdge(v, u));
-            });
+            edges.forEach((key, value) -> value.forEach(v -> builder.addEdge(v, key)));
             return builder.build();
         }
 
@@ -204,9 +200,11 @@ public class ModuleHashesBuilder {
             T u;
             while ((u = todo.poll()) != null) {
                 if (visited.add(u) && contains(u)) {
-                    adjacentNodes(u).stream()
-                        .filter(v -> !visited.contains(v))
-                        .forEach(todo::push);
+                    for (var v : adjacentNodes(u)) {
+                        if (!visited.contains(v)) {
+                            todo.push(v);
+                        }
+                    }
                 }
             }
             return visited;
