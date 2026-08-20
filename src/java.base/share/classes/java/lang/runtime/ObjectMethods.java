@@ -182,11 +182,11 @@ public final class ObjectMethods {
     /**
      * Generates a method handle for the {@code equals} method for a given data class
      * @param receiverClass   the data class
-     * @param getters         the list of getters
+     * @param getters         the array of getters
      * @return the method handle
      */
     private static MethodHandle makeEquals(Class<?> receiverClass,
-                                          List<MethodHandle> getters) {
+                                          MethodHandle[] getters) {
         MethodType rr = MethodType.methodType(boolean.class, receiverClass, receiverClass);
         MethodType ro = MethodType.methodType(boolean.class, receiverClass, Object.class);
         MethodHandle instanceFalse = MethodHandles.dropArguments(FALSE, 0, receiverClass, Object.class); // (RO)Z
@@ -209,11 +209,11 @@ public final class ObjectMethods {
     /**
      * Generates a method handle for the {@code hashCode} method for a given data class
      * @param receiverClass   the data class
-     * @param getters         the list of getters
+     * @param getters         the array of getters
      * @return the method handle
      */
     private static MethodHandle makeHashCode(Class<?> receiverClass,
-                                            List<MethodHandle> getters) {
+                                            MethodHandle[] getters) {
         MethodHandle accumulator = MethodHandles.dropArguments(ZERO, 0, receiverClass); // (R)I
 
         // @@@ Use loop combinator instead?
@@ -237,8 +237,8 @@ public final class ObjectMethods {
     private static MethodHandle makeToString(MethodHandles.Lookup lookup,
                                             Class<?> receiverClass,
                                             MethodHandle[] getters,
-                                            List<String> names) {
-        assert getters.length == names.size();
+                                            String[] names) {
+        assert getters.length == names.length;
         if (getters.length == 0) {
             // special case
             MethodHandle emptyRecordCase = MethodHandles.constant(String.class, receiverClass.getSimpleName() + "[]");
@@ -265,8 +265,8 @@ public final class ObjectMethods {
                     recipe = receiverClass.getSimpleName() + "[";
                 }
                 for (int i = 0; i < splits.get(splitIndex).size(); i++) {
-                    recipe += firstTime ? names.get(namesIndex) + "=" + "\1" : "\1";
-                    if (firstTime && namesIndex != names.size() - 1) {
+                    recipe += firstTime ? names[namesIndex] + "=" + "\1" : "\1";
+                    if (firstTime && namesIndex != names.length - 1) {
                         recipe += ", ";
                     }
                     namesIndex++;
@@ -313,19 +313,19 @@ public final class ObjectMethods {
      * @return chunks that won't surpass the maximum number of slots StringConcatFactory::makeConcatWithConstants can chew
      */
     private static List<List<MethodHandle>> split(MethodHandle[] getters) {
-        List<List<MethodHandle>> splits = new ArrayList<>();
+        List<List<MethodHandle>> splits = new ArrayList<>(10);
 
         int slots = 0;
 
         // Need to peel, so that neither call has more than acceptable number
         // of slots for the arguments.
-        List<MethodHandle> cArgs = new ArrayList<>();
+        List<MethodHandle> cArgs = new ArrayList<>(MAX_STRING_CONCAT_SLOTS);
         for (MethodHandle methodHandle : getters) {
             Class<?> returnType = methodHandle.type().returnType();
             int needSlots = (returnType == long.class || returnType == double.class) ? 2 : 1;
             if (slots + needSlots > MAX_STRING_CONCAT_SLOTS) {
                 splits.add(cArgs);
-                cArgs = new ArrayList<>();
+                cArgs = new ArrayList<>(MAX_STRING_CONCAT_SLOTS);
                 slots = 0;
             }
             cArgs.add(methodHandle);
@@ -398,25 +398,24 @@ public final class ObjectMethods {
             if (!MethodHandle.class.equals(type))
                 throw new IllegalArgumentException(type.toString());
         }
-        List<MethodHandle> getterList = List.of(getters);
         MethodHandle handle = switch (methodName) {
             case "equals"   -> {
                 if (methodType != null && !methodType.equals(MethodType.methodType(boolean.class, recordClass, Object.class)))
                     throw new IllegalArgumentException("Bad method type: " + methodType);
-                yield makeEquals(recordClass, getterList);
+                yield makeEquals(recordClass, getters);
             }
             case "hashCode" -> {
                 if (methodType != null && !methodType.equals(MethodType.methodType(int.class, recordClass)))
                     throw new IllegalArgumentException("Bad method type: " + methodType);
-                yield makeHashCode(recordClass, getterList);
+                yield makeHashCode(recordClass, getters);
             }
             case "toString" -> {
                 if (methodType != null && !methodType.equals(MethodType.methodType(String.class, recordClass)))
                     throw new IllegalArgumentException("Bad method type: " + methodType);
-                List<String> nameList = "".equals(names) ? List.of() : List.of(names.split(";"));
-                if (nameList.size() != getterList.size())
+                String[] nameArray = names.isEmpty() ? new String[0] : names.split(";");
+                if (nameArray.length != getters.length)
                     throw new IllegalArgumentException("Name list and accessor list do not match");
-                yield makeToString(lookup, recordClass, getters, nameList);
+                yield makeToString(lookup, recordClass, getters, nameArray);
             }
             default -> throw new IllegalArgumentException(methodName);
         };
