@@ -171,31 +171,37 @@ class DateTimeTextProvider {
 
         int fieldIndex;
         int fieldValue;
-        if (field == ERA) {
-            fieldIndex = Calendar.ERA;
-            if (chrono == JapaneseChronology.INSTANCE) {
-                if (value == -999) {
-                    fieldValue = 0;
+        switch (field) {
+            case ChronoField.ERA -> {
+                fieldIndex = Calendar.ERA;
+                if (chrono == JapaneseChronology.INSTANCE) {
+                    if (value == -999) {
+                        fieldValue = 0;
+                    } else {
+                        fieldValue = (int) value + 2;
+                    }
                 } else {
-                    fieldValue = (int) value + 2;
+                    fieldValue = (int) value;
                 }
-            } else {
+            }
+            case ChronoField.MONTH_OF_YEAR -> {
+                fieldIndex = Calendar.MONTH;
+                fieldValue = (int) value - 1;
+            }
+            case ChronoField.DAY_OF_WEEK -> {
+                fieldIndex = Calendar.DAY_OF_WEEK;
+                fieldValue = (int) value + 1;
+                if (fieldValue > 7) {
+                    fieldValue = Calendar.SUNDAY;
+                }
+            }
+            case ChronoField.AMPM_OF_DAY -> {
+                fieldIndex = Calendar.AM_PM;
                 fieldValue = (int) value;
             }
-        } else if (field == MONTH_OF_YEAR) {
-            fieldIndex = Calendar.MONTH;
-            fieldValue = (int) value - 1;
-        } else if (field == DAY_OF_WEEK) {
-            fieldIndex = Calendar.DAY_OF_WEEK;
-            fieldValue = (int) value + 1;
-            if (fieldValue > 7) {
-                fieldValue = Calendar.SUNDAY;
+            default -> {
+                return null;
             }
-        } else if (field == AMPM_OF_DAY) {
-            fieldIndex = Calendar.AM_PM;
-            fieldValue = (int) value;
-        } else {
-            return null;
         }
         return CalendarDataUtility.retrieveJavaTimeFieldValueName(
                 chrono.getCalendarType(), fieldIndex, fieldValue, style.toCalendarStyle(), locale);
