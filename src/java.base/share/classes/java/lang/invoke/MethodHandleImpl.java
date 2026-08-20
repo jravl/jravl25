@@ -1670,13 +1670,12 @@ abstract class MethodHandleImpl {
      *
      * @return a handle that, when invoked, will execute the loop.
      */
-    static MethodHandle makeLoop(Class<?> tloop, List<Class<?>> targs, List<MethodHandle> init, List<MethodHandle> step,
-                                 List<MethodHandle> pred, List<MethodHandle> fini) {
+    static MethodHandle makeLoop(Class<?> tloop, List<Class<?>> targs, MethodHandle[] init, MethodHandle[] step,
+                                 MethodHandle[] pred, MethodHandle[] fini) {
         MethodType type = MethodType.methodType(tloop, targs);
-        MethodHandle[] initArray = init.toArray(new MethodHandle[0]);
-        BasicType[] initClauseTypes = new BasicType[initArray.length];
-        for (int index = 0; index < initArray.length; ++index) {
-            initClauseTypes[index] = BasicType.basicType(initArray[index].type().returnType());
+        BasicType[] initClauseTypes = new BasicType[init.length];
+        for (int index = 0; index < init.length; ++index) {
+            initClauseTypes[index] = BasicType.basicType(init[index].type().returnType());
         }
         LambdaForm form = makeLoopForm(type.basicType(), initClauseTypes);
 
@@ -1687,7 +1686,7 @@ abstract class MethodHandleImpl {
         MethodHandle unboxResult = unboxResultHandle(tloop);
 
         LoopClauses clauseData =
-                new LoopClauses(new MethodHandle[][]{initArray, toArray(step), toArray(pred), toArray(fini)});
+                new LoopClauses(new MethodHandle[][]{init, step, pred, fini});
         BoundMethodHandle.SpeciesData data = BoundMethodHandle.speciesData_LLL();
         BoundMethodHandle mh;
         try {
@@ -1698,10 +1697,6 @@ abstract class MethodHandleImpl {
         }
         assert(mh.type() == type);
         return mh;
-    }
-
-    private static MethodHandle[] toArray(List<MethodHandle> l) {
-        return l.toArray(new MethodHandle[0]);
     }
 
     /**

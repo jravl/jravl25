@@ -6509,14 +6509,14 @@ assertEquals("boojum", (String) catTrace.invokeExact("boo", "jum"));
 
         // Step 4: fill in missing parameter types.
         // Also convert all handles to fixed-arity handles.
-        List<MethodHandle> finit = fixArities(fillParameterTypes(init, commonSuffix));
-        List<MethodHandle> fstep = fixArities(fillParameterTypes(step, commonParameterSequence));
-        List<MethodHandle> fpred = fixArities(fillParameterTypes(pred, commonParameterSequence));
-        List<MethodHandle> ffini = fixArities(fillParameterTypes(fini, commonParameterSequence));
+        MethodHandle[] finit = fixArities(fillParameterTypes(init, commonSuffix));
+        MethodHandle[] fstep = fixArities(fillParameterTypes(step, commonParameterSequence));
+        MethodHandle[] fpred = fixArities(fillParameterTypes(pred, commonParameterSequence));
+        MethodHandle[] ffini = fixArities(fillParameterTypes(fini, commonParameterSequence));
 
-        assert finit.stream().map(MethodHandle::type).map(MethodType::parameterList).
+        assert Arrays.stream(finit).map(MethodHandle::type).map(MethodType::parameterList).
                 allMatch(pl -> pl.equals(commonSuffix));
-        assert Stream.of(fstep, fpred, ffini).flatMap(List::stream).map(MethodHandle::type).map(MethodType::parameterList).
+        assert Stream.of(fstep, fpred, ffini).flatMap(Arrays::stream).map(MethodHandle::type).map(MethodType::parameterList).
                 allMatch(pl -> pl.equals(commonParameterSequence));
 
         return MethodHandleImpl.makeLoop(loopReturnType, commonSuffix, finit, fstep, fpred, ffini);
@@ -6589,16 +6589,22 @@ assertEquals("boojum", (String) catTrace.invokeExact("boo", "jum"));
         }
     }
 
-    private static List<MethodHandle> fillParameterTypes(List<MethodHandle> hs, final List<Class<?>> targetParams) {
-        return hs.stream().map(h -> {
+    private static MethodHandle[] fillParameterTypes(List<MethodHandle> hs, final List<Class<?>> targetParams) {
+        MethodHandle[] mhs = new MethodHandle[hs.size()];
+        for (int i = 0; i < mhs.length; ++i) {
+            var h = hs.get(i);
             int pc = h.type().parameterCount();
             int tpsize = targetParams.size();
-            return pc < tpsize ? dropArguments(h, pc, targetParams.subList(pc, tpsize)) : h;
-        }).toList();
+            mhs[i] = pc < tpsize ? dropArguments(h, pc, targetParams.subList(pc, tpsize)) : h;
+        }
+        return mhs;
     }
 
-    private static List<MethodHandle> fixArities(List<MethodHandle> hs) {
-        return hs.stream().map(MethodHandle::asFixedArity).toList();
+    private static MethodHandle[] fixArities(MethodHandle[] hs) {
+        for (int i = 0; i < hs.length; ++i) {
+            hs[i] = hs[i].asFixedArity();
+        }
+        return hs;
     }
 
     /**
