@@ -1673,8 +1673,11 @@ abstract class MethodHandleImpl {
     static MethodHandle makeLoop(Class<?> tloop, List<Class<?>> targs, List<MethodHandle> init, List<MethodHandle> step,
                                  List<MethodHandle> pred, List<MethodHandle> fini) {
         MethodType type = MethodType.methodType(tloop, targs);
-        BasicType[] initClauseTypes =
-                init.stream().map(h -> h.type().returnType()).map(BasicType::basicType).toArray(BasicType[]::new);
+        MethodHandle[] initArray = init.toArray(new MethodHandle[0]);
+        BasicType[] initClauseTypes = new BasicType[initArray.length];
+        for (int index = 0; index < initArray.length; ++index) {
+            initClauseTypes[index] = BasicType.basicType(initArray[index].type().returnType());
+        }
         LambdaForm form = makeLoopForm(type.basicType(), initClauseTypes);
 
         // Prepare auxiliary method handles used during LambdaForm interpretation.
@@ -1684,7 +1687,7 @@ abstract class MethodHandleImpl {
         MethodHandle unboxResult = unboxResultHandle(tloop);
 
         LoopClauses clauseData =
-                new LoopClauses(new MethodHandle[][]{toArray(init), toArray(step), toArray(pred), toArray(fini)});
+                new LoopClauses(new MethodHandle[][]{initArray, toArray(step), toArray(pred), toArray(fini)});
         BoundMethodHandle.SpeciesData data = BoundMethodHandle.speciesData_LLL();
         BoundMethodHandle mh;
         try {
@@ -1816,7 +1819,12 @@ abstract class MethodHandleImpl {
         final MethodHandle[] step = clauseData.clauses[1];
         final MethodHandle[] pred = clauseData.clauses[2];
         final MethodHandle[] fini = clauseData.clauses[3];
-        int varSize = (int) Stream.of(init).filter(h -> h.type().returnType() != void.class).count();
+        int varSize = 0;
+        for (var h : init) {
+            if (h.type().returnType() != void.class) {
+                ++varSize;
+            }
+        }
         int nArgs = init[0].type().parameterCount();
         Object[] varsAndArgs = new Object[varSize + nArgs];
         for (int i = 0, v = 0; i < init.length; ++i) {
