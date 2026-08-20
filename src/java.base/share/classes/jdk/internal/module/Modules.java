@@ -33,12 +33,12 @@ import java.lang.module.ModuleReference;
 import java.lang.module.ResolvedModule;
 import java.net.URI;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import jdk.internal.access.JavaLangModuleAccess;
 import jdk.internal.loader.BootLoader;
@@ -224,29 +224,36 @@ public class Modules {
         ModuleLayer newLayer = top.defineModules(cf, clf);
 
         // add qualified exports/opens to give access to modules in child layer
-        Map<String, Module> map = newLayer.modules().stream()
-                                          .collect(Collectors.toMap(Module::getName,
-                                                  Function.identity()));
+        Map<String, Module> map = new HashMap<>(newLayer.modules().size());
+        for (var mod : newLayer.modules()) {
+            map.put(mod.getName(), mod);
+        }
         ModuleLayer layer = top;
         while (layer != null) {
             for (Module m : layer.modules()) {
                 // qualified exports
-                m.getDescriptor().exports().stream()
-                    .filter(ModuleDescriptor.Exports::isQualified)
-                    .forEach(e -> e.targets().forEach(target -> {
-                        Module other = map.get(target);
-                        if (other != null) {
-                            addExports(m, e.source(), other);
-                        }}));
+                for (var export : m.getDescriptor().exports()) {
+                    if (export.isQualified()) {
+                        for (var target : export.targets()) {
+                            Module other = map.get(target);
+                            if (other != null) {
+                                addExports(m, export.source(), other);
+                            }
+                        }
+                    }
+                }
 
                 // qualified opens
-                m.getDescriptor().opens().stream()
-                    .filter(ModuleDescriptor.Opens::isQualified)
-                    .forEach(o -> o.targets().forEach(target -> {
-                        Module other = map.get(target);
-                        if (other != null) {
-                            addOpens(m, o.source(), other);
-                        }}));
+                for (var open : m.getDescriptor().opens()) {
+                    if (open.isQualified()) {
+                        for (var target : open.targets()) {
+                            Module other = map.get(target);
+                            if (other != null) {
+                                addOpens(m, open.source(), other);
+                            }
+                        }
+                    }
+                }
             }
 
             List<ModuleLayer> parents = layer.parents();
