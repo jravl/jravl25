@@ -6550,19 +6550,34 @@ assertEquals("boojum", (String) catTrace.invokeExact("boo", "jum"));
         }
     }
 
-    private static List<Class<?>> longestParameterList(Stream<MethodHandle> mhs, int skipSize) {
-        return mhs.filter(Objects::nonNull)
-                // take only those that can contribute to a common suffix because they are longer than the prefix
-                .map(MethodHandle::type)
-                .filter(t -> t.parameterCount() > skipSize)
-                .max(Comparator.comparingInt(MethodType::parameterCount))
-                .map(methodType -> List.of(Arrays.copyOfRange(methodType.ptypes(), skipSize, methodType.parameterCount())))
-                .orElse(List.of());
+    @SafeVarargs
+    private static List<Class<?>> longestParameterList(int skipSize, List<MethodHandle>... mhss) {
+        MethodType longest = null;
+        int paraCount = -1;
+        for (var mhs : mhss) {
+            for (var mh : mhs) {
+                if (mh != null) {
+                    MethodType t = mh.type();
+                    int tParaCount = t.parameterCount();
+                    if (tParaCount > skipSize) {
+                        if (tParaCount > paraCount) {
+                            paraCount = tParaCount;
+                            longest = t;
+                        }
+                    }
+                }
+            }
+        }
+        if (paraCount == -1) {
+            return List.of();
+        } else {
+            return List.of(Arrays.copyOfRange(longest.ptypes(), skipSize, paraCount));
+        }
     }
 
     private static List<Class<?>> buildCommonSuffix(List<MethodHandle> init, List<MethodHandle> step, List<MethodHandle> pred, List<MethodHandle> fini, int cpSize) {
-        final List<Class<?>> longest1 = longestParameterList(Stream.of(step, pred, fini).flatMap(List::stream), cpSize);
-        final List<Class<?>> longest2 = longestParameterList(init.stream(), 0);
+        final List<Class<?>> longest1 = longestParameterList(cpSize, step, pred, fini);
+        final List<Class<?>> longest2 = longestParameterList(0, init);
         return longest1.size() >= longest2.size() ? longest1 : longest2;
     }
 
