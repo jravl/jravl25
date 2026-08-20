@@ -27,9 +27,8 @@ package jdk.internal.module;
 
 import java.lang.module.ModuleDescriptor;
 import java.lang.module.ModuleFinder;
-import java.lang.module.ModuleReference;
+import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Defines methods to compute the default set of root modules for the unnamed
@@ -49,13 +48,17 @@ public final class DefaultRoots {
      * path, or a subset of when using --limit-modules.
      */
     static Set<String> compute(ModuleFinder finder1, ModuleFinder finder2) {
-        return finder1.findAll().stream()
-                .filter(mref -> !ModuleResolution.doNotResolveByDefault(mref))
-                .map(ModuleReference::descriptor)
-                .filter(descriptor -> finder2.find(descriptor.name()).isPresent()
-                                      && exportsAPI(descriptor))
-                .map(ModuleDescriptor::name)
-                .collect(Collectors.toSet());
+        HashSet<String> result = new HashSet<>();
+        for (var mref : finder1.findAll()) {
+            if (!ModuleResolution.doNotResolveByDefault(mref)) {
+                var descriptor = mref.descriptor();
+                String descName = descriptor.name();
+                if (finder2.find(descName).isPresent() && exportsAPI(descriptor)) {
+                    result.add(descName);
+                }
+            }
+        }
+        return result;
     }
 
     /**
@@ -72,10 +75,11 @@ public final class DefaultRoots {
      * Returns true if the given module exports a package to all modules
      */
     private static boolean exportsAPI(ModuleDescriptor descriptor) {
-        return descriptor.exports()
-                .stream()
-                .filter(e -> !e.isQualified())
-                .findAny()
-                .isPresent();
+        for (var e : descriptor.exports()) {
+            if (!e.isQualified()) {
+                return true;
+            }
+        }
+        return false;
     }
 }
