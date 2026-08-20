@@ -46,6 +46,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -166,7 +167,7 @@ public class ModulePath implements ModuleFinder {
         while (hasNextEntry()) {
             scanNextEntry();
         }
-        return cachedModules.values().stream().collect(Collectors.toSet());
+        return new HashSet<>(cachedModules.values());
     }
 
     /**
@@ -374,12 +375,16 @@ public class ModulePath implements ModuleFinder {
     // -- JMOD files --
 
     private Set<String> jmodPackages(JmodFile jf) {
-        return jf.stream()
-            .filter(e -> e.section() == Section.CLASSES)
-            .map(JmodFile.Entry::name)
-            .map(this::toPackageName)
-            .flatMap(Optional::stream)
-            .collect(Collectors.toSet());
+        Set<String> packages = new HashSet<>();
+        jf.stream().forEach(entry -> {
+            if (entry.section() == Section.CLASSES) {
+                var pn = toPackageName(entry.name());
+                if (pn.isPresent()) {
+                    packages.add(pn.get());
+                }
+            }
+        });
+        return packages;
     }
 
     /**
@@ -525,19 +530,25 @@ public class ModulePath implements ModuleFinder {
         Set<String> configFiles = map.get(Boolean.TRUE);
 
         // the packages containing class files
-        Set<String> packages = classFiles.stream()
-                .map(this::toPackageName)
-                .flatMap(Optional::stream)
-                .collect(Collectors.toSet());
+        Set<String> packages = new HashSet<>(classFiles.size());
+        for (var cf : classFiles) {
+            var pn = this.toPackageName(cf);
+            if (pn.isPresent()) {
+                packages.add(pn.get());
+            }
+        }
 
         // all packages are exported and open
         builder.packages(packages);
 
         // map names of service configuration files to service names
-        Set<String> serviceNames = configFiles.stream()
-                .map(this::toServiceName)
-                .flatMap(Optional::stream)
-                .collect(Collectors.toSet());
+        Set<String> serviceNames = new HashSet<>(configFiles.size());
+        for (var cfg : configFiles) {
+            var sn = this.toServiceName(cfg);
+            if (sn.isPresent()) {
+                serviceNames.add(sn.get());
+            }
+        }
 
         // parse each service configuration file
         for (String sn : serviceNames) {
