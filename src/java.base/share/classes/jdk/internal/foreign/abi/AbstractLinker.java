@@ -231,11 +231,12 @@ public abstract sealed class AbstractLinker implements Linker permits LinuxAArch
         } else if (layout instanceof UnionLayout ul) {
             checkHasNaturalAlignment(layout);
             // We need to know this up front
-            long maxUnpaddedLayout = ul.memberLayouts().stream()
-                    .filter(l -> !(l instanceof PaddingLayout))
-                    .mapToLong(MemoryLayout::byteSize)
-                    .max()
-                    .orElse(0);
+            long maxUnpaddedLayout = 0;
+            for (MemoryLayout l : ul.memberLayouts()) {
+                if (!(l instanceof PaddingLayout)) {
+                    maxUnpaddedLayout = Math.max(maxUnpaddedLayout, l.byteSize());
+                }
+            }
 
             boolean hasPadding = false;
 
@@ -264,7 +265,12 @@ public abstract sealed class AbstractLinker implements Linker permits LinuxAArch
 
     // check elements are not all padding layouts
     private static void checkNotAllPadding(StructLayout sl) {
-        if (!sl.memberLayouts().isEmpty() && sl.memberLayouts().stream().allMatch(e -> e instanceof PaddingLayout)) {
+        if (!sl.memberLayouts().isEmpty()) {
+            for (MemoryLayout layout : sl.memberLayouts()) {
+                if (!(layout instanceof PaddingLayout)) {
+                    return;
+                }
+            }
             throw new IllegalArgumentException("Layout '" + sl + "' is non-empty and only has padding layouts");
         }
     }
