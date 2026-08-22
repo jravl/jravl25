@@ -55,10 +55,8 @@ import java.util.Properties;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Supplier;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Stream;
 
 import jdk.internal.javac.Restricted;
 import jdk.internal.loader.NativeLibraries;
@@ -2112,10 +2110,10 @@ public final class System {
             public void bindToLoader(ModuleLayer layer, ClassLoader loader) {
                 layer.bindToLoader(loader);
             }
-            public Stream<ModuleLayer> layers(ModuleLayer layer) {
+            public List<ModuleLayer> layers(ModuleLayer layer) {
                 return layer.layers();
             }
-            public Stream<ModuleLayer> layers(ClassLoader loader) {
+            public List<ModuleLayer> layers(ClassLoader loader) {
                 return ModuleLayer.layers(loader);
             }
 

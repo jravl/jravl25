@@ -1343,17 +1343,17 @@ public final class Module implements AnnotatedElement {
                                      ResolvedModule resolvedModule) {
         Configuration cf = resolvedModule.configuration();
         String dn = resolvedModule.name();
-        return parent.layers()
-                .filter(l -> l.configuration() == cf)
-                .findAny()
-                .map(layer -> {
-                    Optional<Module> om = layer.findModule(dn);
-                    assert om.isPresent() : dn + " not found in layer";
-                    Module m = om.get();
-                    assert m.getLayer() == layer : m + " not in expected layer";
-                    return m;
-                })
-                .orElse(null);
+        List<ModuleLayer> layers = parent.layers();
+        for (ModuleLayer layer : layers) {
+            if (layer.configuration() == cf) {
+                Optional<Module> om = layer.findModule(dn);
+                assert om.isPresent() : dn + " not found in layer";
+                Module m = om.get();
+                assert m.getLayer() == layer : m + " not in expected layer";
+                return m;
+            }
+        }
+        return null;
     }
 
     /**

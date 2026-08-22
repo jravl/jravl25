@@ -42,7 +42,6 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import jdk.internal.javac.Restricted;
 import jdk.internal.loader.ClassLoaderValue;
@@ -750,10 +749,10 @@ public final class ModuleLayer {
      * @implNote For now, the assumption is that the number of elements will
      * be very low and so this method does not use a specialized spliterator.
      */
-    Stream<ModuleLayer> layers() {
+    List<ModuleLayer> layers() {
         List<ModuleLayer> allLayers = this.allLayers;
         if (allLayers != null)
-            return allLayers.stream();
+            return allLayers;
 
         allLayers = new ArrayList<>();
         Set<ModuleLayer> visited = new HashSet<>();
@@ -775,7 +774,7 @@ public final class ModuleLayer {
         }
 
         this.allLayers = allLayers = Collections.unmodifiableList(allLayers);
-        return allLayers.stream();
+        return allLayers;
     }
 
     private volatile List<ModuleLayer> allLayers;
@@ -819,11 +818,16 @@ public final class ModuleLayer {
         if (m != null)
             return Optional.of(m);
 
-        return layers()
-                .skip(1)  // skip this layer
-                .map(l -> l.nameToModule.get(name))
-                .filter(Objects::nonNull)
-                .findAny();
+        List<ModuleLayer> layers = layers();
+        // skip this layer
+        for (int index = 1, len = layers.size(); index < len; ++index) {
+            ModuleLayer l = layers.get(index);
+            Module mod = l.nameToModule.get(name);
+            if (mod != null)
+                return Optional.of(mod);
+        }
+
+        return Optional.empty();
     }
 
     /**
@@ -955,13 +959,9 @@ public final class ModuleLayer {
      * Returns a stream of the layers that have at least one module defined to
      * the given class loader.
      */
-    static Stream<ModuleLayer> layers(ClassLoader loader) {
+    static List<ModuleLayer> layers(ClassLoader loader) {
         List<ModuleLayer> list = CLV.get(loader);
-        if (list != null) {
-            return list.stream();
-        } else {
-            return Stream.empty();
-        }
+        return list != null ? list : Collections.emptyList();
     }
 
     // the list of layers with modules defined to a class loader

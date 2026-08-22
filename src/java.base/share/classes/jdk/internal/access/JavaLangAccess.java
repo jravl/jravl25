@@ -289,16 +289,16 @@ public interface JavaLangAccess {
     void bindToLoader(ModuleLayer layer, ClassLoader loader);
 
     /**
-     * Returns an ordered stream of layers. The first element is the
+     * Returns a list of layers. The first element is the
      * given layer, the remaining elements are its parents, in DFS order.
      */
-    Stream<ModuleLayer> layers(ModuleLayer layer);
+    List<ModuleLayer> layers(ModuleLayer layer);
 
     /**
-     * Returns a stream of the layers that have modules defined to the
+     * Returns a list of the layers that have modules defined to the
      * given class loader.
      */
-    Stream<ModuleLayer> layers(ClassLoader loader);
+    List<ModuleLayer> layers(ClassLoader loader);
 
     /**
      * Count the number of leading positive bytes in the range.

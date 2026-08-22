@@ -216,12 +216,16 @@ public final class Loader extends SecureClassLoader {
                 } else {
 
                     // find the layer for the target module
-                    ModuleLayer layer = parentModuleLayers.stream()
-                        .map(parent -> findModuleLayer(parent, other.configuration()))
-                        .flatMap(Optional::stream)
-                        .findAny()
-                        .orElseThrow(() ->
-                            new InternalError("Unable to find parent layer"));
+                    ModuleLayer layer = null;
+                    for (ModuleLayer parent : parentModuleLayers) {
+                        ModuleLayer l = findModuleLayer(parent, other.configuration());
+                        if (l != null) {
+                            layer = l;
+                            break;
+                        }
+                    }
+                    if (layer == null)
+                        throw new InternalError("Unable to find parent layer");
 
                     // find the class loader for the module
                     // For now we use the platform loader for modules defined to the
@@ -282,10 +286,13 @@ public final class Loader extends SecureClassLoader {
      * Find the layer corresponding to the given configuration in the tree
      * of layers rooted at the given parent.
      */
-    private Optional<ModuleLayer> findModuleLayer(ModuleLayer parent, Configuration cf) {
-        return SharedSecrets.getJavaLangAccess().layers(parent)
-                .filter(l -> l.configuration() == cf)
-                .findAny();
+    private ModuleLayer findModuleLayer(ModuleLayer parent, Configuration cf) {
+        for (ModuleLayer layer : SharedSecrets.getJavaLangAccess().layers(parent)) {
+            if (layer.configuration() == cf) {
+                return layer;
+            }
+        }
+        return null;
     }
 
 
